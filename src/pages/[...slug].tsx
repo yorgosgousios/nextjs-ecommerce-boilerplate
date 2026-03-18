@@ -5,7 +5,7 @@ import { resolveRoute } from "@/core/api/routerService";
 import type { RouteResolution } from "@/core/api/routerModel";
 
 // Feature components
-import { ProductDetail } from "@/features/products/components/ProductDetail";
+import { ProductDetail } from "@/features/product/components/ProductDetail";
 import {
   BlogView,
   BlogListView,
@@ -15,28 +15,20 @@ import { LandingPageView } from "@/features/landing/components/LandingPageView";
 import { PageGone } from "@/core/ui/PageGone";
 
 // Feature services
-import {
-  fetchProductById,
-  fetchProductListingByCategory,
-} from "@/features/products/service/productsService";
+
+import { fetchProductListingByCategory } from "@/features/product-listing/service/productListingService";
 import {
   fetchBlogPost,
   fetchBlogListing,
 } from "@/features/blog/service/blogService";
 import { fetchBasicPage } from "@/features/basic-page/service/basicPageService";
 import { fetchLandingPage } from "@/features/landing/service/landingService";
+import { fetchProductById } from "@/features/product/services/productSerivce";
 
 // ─────────────────────────────────────────────────────────
 // Resolve service function by type + bundle
 // ─────────────────────────────────────────────────────────
 
-/**
- * Given the route data from the backend, return the correct service function
- * and the pageType string used for rendering.
- *
- * Same pattern as the old Envie slug's getPageDataByType switch,
- * but returns { apiGetPageData, pageType } instead of calling the function directly.
- */
 interface PageDataEntry {
   apiGetPageData: (id: number, page: number) => Promise<any>;
   pageType: string;
@@ -82,13 +74,13 @@ const getPageDataByType = (
 // Render component by pageType
 // ─────────────────────────────────────────────────────────
 
-const renderPageByType = (pageType: string, pageData: any, page: any) => {
+const renderPageByType = (pageType: string, pageData: any) => {
   switch (pageType) {
     case "product":
       return <ProductDetail product={pageData} />;
 
     case "product_listing":
-      // TODO: Replace with proper ProductListView once API response shape is known
+      // TODO: Replace with proper ProductListView component
       return (
         <div>
           <h1>Product Listing</h1>
@@ -144,16 +136,6 @@ interface CatchAllPageProps {
 // Page Component
 // ─────────────────────────────────────────────────────────
 
-/**
- * CMS-Driven Catch-All Page.
- *
- * FLOW:
- * 1. User visits any path (e.g., /shoes/nike-air-max)
- * 2. getServerSideProps resolves the route via backend API
- * 3. getPageDataByType picks the right service function (switch)
- * 4. Data is fetched ON THE SERVER, passed as props
- * 5. renderPageByType picks the right component to render (switch)
- */
 const CatchAllPage = (
   props: InferGetServerSidePropsType<typeof getServerSideProps>,
 ) => {
@@ -170,7 +152,7 @@ const CatchAllPage = (
         <meta property="og:title" content={meta.title} />
       </Head>
 
-      {renderPageByType(page.pageType, pageData, page)}
+      {renderPageByType(page.pageType, pageData)}
     </>
   );
 };
@@ -198,12 +180,12 @@ export const getServerSideProps: GetServerSideProps<CatchAllPageProps> = async (
   // Handle redirects
   if (
     routeData.redirect &&
-    routeData.path !== `/${path}` &&
-    (routeData.status === 301 || routeData.status === 302)
+    typeof routeData.redirect === "string" &&
+    routeData.path !== `/${path}`
   ) {
     return {
       redirect: {
-        destination: routeData.path ?? routeData.redirect,
+        destination: routeData.path,
         permanent: routeData.status === 301,
       },
     };
@@ -248,12 +230,21 @@ export const getServerSideProps: GetServerSideProps<CatchAllPageProps> = async (
       path: routeData.path,
     };
 
+    const metaTags = pageData?.info?.metaTags ?? pageData?.metaTags;
+
     const meta = {
       title:
-        pageData?.metaTitle ?? pageData?.title ?? pageData?.name ?? "Store",
-      description:
-        pageData?.metaDescription ?? pageData?.description?.slice(0, 160) ?? "",
-      ogImage: pageData?.image ?? pageData?.images?.[0] ?? null,
+        metaTags?.title ??
+        pageData?.title ??
+        pageData?.info?.name ??
+        pageData?.name ??
+        "Store",
+      description: metaTags?.description ?? pageData?.body?.slice(0, 160) ?? "",
+      ogImage:
+        metaTags?.["og:image"] ??
+        pageData?.productMedia?.[0]?.url ??
+        pageData?.image ??
+        null,
     };
 
     return {
@@ -263,8 +254,23 @@ export const getServerSideProps: GetServerSideProps<CatchAllPageProps> = async (
         meta,
       },
     };
-  } catch (error) {
-    console.error("[CatchAllPage] Error fetching page data:", error);
-    return { notFound: true };
+  } catch (error: any) {
+    const status = error?.response?.status;
+
+    if (status === 404) {
+      console.error(
+        "[CatchAllPage] Data not found for:",
+        routeData.type,
+        routeData.id,
+      );
+      return { notFound: true };
+    }
+
+    console.error(
+      "[CatchAllPage] Server error:",
+      status ?? "network error",
+      error?.message,
+    );
+    throw error;
   }
 };

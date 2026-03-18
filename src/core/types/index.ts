@@ -1,8 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { BasicPage } from "@/features/basic-page/model/types";
-import { BlogListResponse, BlogPost } from "@/features/blog/model/types";
-import { LandingPage } from "@/features/landing/model/types";
-import { Product } from "@/features/products/model/types";
 
 export interface PageMeta {
   title: string;
@@ -10,42 +6,39 @@ export interface PageMeta {
   ogImage?: string;
 }
 
-export type CatchAllPageProps =
-  | {
-      pageType: "product";
-      data: Product;
-      meta: PageMeta;
-    }
-  | {
-      pageType: "product_listing";
-      data: any;
-      meta: PageMeta;
-    }
-  | {
-      pageType: "blog";
-      data: BlogPost;
-      meta: PageMeta;
-    }
-  | {
-      pageType: "blog_listing";
-      data: {
-        listing: BlogListResponse;
-        categoryName: string;
-      };
-      meta: PageMeta;
-    }
-  | {
-      pageType: "basic_page";
-      data: BasicPage;
-      meta: PageMeta;
-    }
-  | {
-      pageType: "landing_page";
-      data: LandingPage;
-      meta: PageMeta;
-    }
-  | {
-      pageType: "gone";
-      data: null;
-      meta: PageMeta;
-    };
+// ─────────────────────────────────────────────────────────
+// Shared types used across product and product-listing features
+// ─────────────────────────────────────────────────────────
+
+export interface ProductImage {
+  alt: string;
+  url: string;
+}
+
+export interface ProductSize {
+  name: string;
+  sku: string;
+  variation_id: string;
+  available: boolean;
+  availability: string;
+  stock_level: number;
+}
+
+export interface Breadcrumb {
+  path: string;
+  name: string;
+}
+
+export interface MetaTags {
+  description: string;
+  title: string;
+  canonical_url: string;
+  image_src: string;
+  "og:description": string;
+  "og:title": string;
+  "og:url": string;
+  "og:image": string;
+  "og:image_secure_url": string;
+  "og:image_url": string;
+  "og:site_name"?: string;
+}

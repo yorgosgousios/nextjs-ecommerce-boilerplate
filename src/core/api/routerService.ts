@@ -6,18 +6,15 @@ import type { RouteResolution } from "./routerModel";
 /**
  * Send a path to the backend and get back the entity type + ID.
  *
- * This is the CMS-driven routing pattern:
- *  1. User visits /shoes/nike-air-max
- *  2. Next.js catch-all [[...slug]].tsx calls this in getServerSideProps
- *  3. Backend responds: { type: "commerce_product", bundle: "product", id: 123 }
- *  4. We then fetch the product data and render the Product component
- *
- * Returns null if the path doesn't resolve to any entity (404).
+ * Error handling:
+ *  - 404 → returns null (path not found in CMS)
+ *  - 410 → returns RouteResolution with status 410
+ *  - 5xx / network errors → throws (triggers Next.js 500 page)
  */
-export async function resolveRoute(
+export const resolveRoute = async (
   path: string,
   locale?: string,
-): Promise<RouteResolution | null> {
+): Promise<RouteResolution | null> => {
   try {
     const { data } = await apiClient.get<RouteResolution>(ROUTER_ENDPOINT, {
       params: {
@@ -29,10 +26,10 @@ export async function resolveRoute(
   } catch (error: any) {
     const status = error?.response?.status;
 
-    // 404 = path not found in CMS
+    // 404 = path not found in CMS → caller returns { notFound: true }
     if (status === 404) return null;
 
-    // 410 = page was deleted/gone
+    // 410 = page was deleted/gone → caller renders PageGone component
     if (status === 410) {
       return {
         type: "gone",
@@ -43,8 +40,12 @@ export async function resolveRoute(
       };
     }
 
-    // Other errors — let them bubble up
-    console.error("[resolveRoute] Error resolving path:", path, error);
-    return null;
+    // 5xx or network errors → throw so Next.js renders 500.tsx
+    console.error(
+      "[resolveRoute] Server error for path:",
+      path,
+      status ?? "network error",
+    );
+    throw error;
   }
-}
+};

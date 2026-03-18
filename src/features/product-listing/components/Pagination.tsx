@@ -39,7 +39,7 @@ export function Pagination({
             >
               {page}
             </button>
-          )
+          ),
         )}
       </div>
 
@@ -60,7 +60,7 @@ export function Pagination({
  */
 function generatePageNumbers(
   current: number,
-  total: number
+  total: number,
 ): (number | "...")[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 
