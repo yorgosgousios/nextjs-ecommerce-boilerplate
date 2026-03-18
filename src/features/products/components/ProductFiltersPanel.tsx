@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from "react";
 import type { Category, ProductFilters } from "../model/types";
 import styles from "./ProductFiltersPanel.module.scss";

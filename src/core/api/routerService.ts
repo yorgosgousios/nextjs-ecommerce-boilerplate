@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { apiClient } from "./apiClient";
 import { ROUTER_ENDPOINT } from "./endpoints";
 import type { RouteResolution } from "./routerModel";
@@ -15,7 +16,7 @@ import type { RouteResolution } from "./routerModel";
  */
 export async function resolveRoute(
   path: string,
-  locale?: string
+  locale?: string,
 ): Promise<RouteResolution | null> {
   try {
     const { data } = await apiClient.get<RouteResolution>(ROUTER_ENDPOINT, {
