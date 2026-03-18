@@ -1,102 +1,113 @@
 import { createStore, createEvent, createEffect, sample } from "effector";
-import type { CartItem, AddToCartPayload, CartValidationResponse } from "../model/types";
-import { validateCart } from "../service/cartService";
-
-// ── Events ───────────────────────────────────────────────
-export const addToCart = createEvent<AddToCartPayload>();
-export const removeFromCart = createEvent<string>(); // productId
-export const updateQuantity = createEvent<{
-  productId: string;
-  quantity: number;
-}>();
-export const clearCart = createEvent();
-export const cartSyncedFromStorage = createEvent<CartItem[]>();
+import type { CartResponse, AddToCartPayload } from "../model/types";
+import {
+  fetchCart,
+  addToCart,
+  updateCartItemQuantity,
+  removeCartItem,
+  clearCart,
+} from "../service/cartService";
 
 // ── Effects ──────────────────────────────────────────────
-export const validateCartFx = createEffect(validateCart);
+
+export const fetchCartFx = createEffect(fetchCart);
+
+export const addToCartFx = createEffect(async (items: [AddToCartPayload]) =>
+  addToCart(items),
+);
+
+export const updateQuantityFx = createEffect(
+  async (params: { orderId: number; orderItemId: number; quantity: number }) =>
+    updateCartItemQuantity(params.orderId, params.orderItemId, {
+      quantity: params.quantity,
+    }),
+);
+
+export const removeItemFx = createEffect(
+  async (params: { orderId: number; orderItemId: number }) =>
+    removeCartItem(params.orderId, params.orderItemId),
+);
+
+export const clearCartFx = createEffect(async (orderId: number) =>
+  clearCart(orderId),
+);
+
+// ── Events ───────────────────────────────────────────────
+
+/** Trigger a cart refetch */
+export const cartRefetchRequested = createEvent();
 
 // ── Stores ───────────────────────────────────────────────
 
-export const $cartItems = createStore<CartItem[]>([])
-  .on(addToCart, (items, payload) => {
-    const existing = items.find((i) => i.productId === payload.productId);
-    if (existing) {
-      return items.map((i) =>
-        i.productId === payload.productId
-          ? { ...i, quantity: i.quantity + payload.quantity }
-          : i
-      );
-    }
-    return [...items, { ...payload }];
-  })
-  .on(removeFromCart, (items, productId) =>
-    items.filter((i) => i.productId !== productId)
-  )
-  .on(updateQuantity, (items, { productId, quantity }) => {
-    if (quantity < 1) return items.filter((i) => i.productId !== productId);
-    return items.map((i) =>
-      i.productId === productId ? { ...i, quantity } : i
-    );
-  })
-  .on(validateCartFx.doneData, (_, result) => result.updatedItems)
-  .on(cartSyncedFromStorage, (_, items) => items)
-  .reset(clearCart);
+/**
+ * The full cart response from the backend.
+ * Every mutation (add, update, remove) returns the full updated cart,
+ * so we always replace the entire state — no partial merging needed.
+ */
+export const $cart = createStore<CartResponse | null>(null)
+  .on(fetchCartFx.doneData, (_, cart) => cart)
+  .on(addToCartFx.doneData, (_, cart) => cart)
+  .on(updateQuantityFx.doneData, (_, cart) => cart)
+  .on(removeItemFx.doneData, (_, cart) => cart)
+  .on(clearCartFx.doneData, () => null);
+
+export const $cartIsLoading = createStore(false)
+  .on(fetchCartFx, () => true)
+  .on(fetchCartFx.doneData, () => false)
+  .on(fetchCartFx.failData, () => false);
+
+export const $cartIsMutating = createStore(false)
+  .on(addToCartFx, () => true)
+  .on(updateQuantityFx, () => true)
+  .on(removeItemFx, () => true)
+  .on(clearCartFx, () => true)
+  .on(addToCartFx.finally, () => false)
+  .on(updateQuantityFx.finally, () => false)
+  .on(removeItemFx.finally, () => false)
+  .on(clearCartFx.finally, () => false);
 
 // ── Derived stores ───────────────────────────────────────
 
+export const $cartItems = $cart.map((cart) => cart?.order_items ?? []);
+
 export const $cartItemCount = $cartItems.map((items) =>
-  items.reduce((sum, item) => sum + item.quantity, 0)
+  items.reduce((sum, item) => sum + item.quantity, 0),
 );
 
-export const $cartSubtotal = $cartItems.map((items) =>
-  items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+export const $cartSubtotal = $cart.map(
+  (cart) => cart?.sub_total_price ?? "0,00 €",
 );
+
+export const $cartTotal = $cart.map((cart) => cart?.total_price ?? "0,00 €");
+
+export const $cartTotalRaw = $cart.map((cart) => cart?.total_price_raw ?? 0);
+
+export const $cartOrderId = $cart.map((cart) => cart?.order_id ?? null);
 
 export const $isCartEmpty = $cartItems.map((items) => items.length === 0);
 
-export const $isValidating = validateCartFx.pending;
+export const $cartAdjustments = $cart.map((cart) => cart?.adjustments ?? []);
 
-// ── Persistence (client-side only) ───────────────────────
+export const $cartCoupons = $cart.map((cart) => cart?.coupons ?? []);
 
-const CART_STORAGE_KEY = "cart_items";
+// ── Connections ──────────────────────────────────────────
+
+/** Refetch cart when requested */
+sample({
+  clock: cartRefetchRequested,
+  target: fetchCartFx,
+});
+
+// ── Init ─────────────────────────────────────────────────
 
 /**
- * Subscribe to cart changes and persist to localStorage.
- * Also listens for storage events to sync across tabs.
+ * Initialize the cart on app load.
+ * Call once in _app.tsx.
  *
- * Call this once in _app.tsx.
+ * Unlike the localStorage approach, this makes an API call
+ * to fetch the current cart state from the backend.
  */
-export function initCartPersistence() {
+export const initCart = () => {
   if (typeof window === "undefined") return;
-
-  // Load from localStorage on init
-  try {
-    const stored = localStorage.getItem(CART_STORAGE_KEY);
-    if (stored) {
-      const items = JSON.parse(stored) as CartItem[];
-      cartSyncedFromStorage(items);
-    }
-  } catch {
-    // Corrupted data — start fresh
-  }
-
-  // Persist on every change
-  $cartItems.watch((items) => {
-    try {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
-    } catch {
-      // Storage full or unavailable
-    }
-  });
-
-  // Cross-tab synchronization
-  window.addEventListener("storage", (event) => {
-    if (event.key !== CART_STORAGE_KEY || !event.newValue) return;
-    try {
-      const items = JSON.parse(event.newValue) as CartItem[];
-      cartSyncedFromStorage(items);
-    } catch {
-      // Ignore malformed data
-    }
-  });
-}
+  fetchCartFx();
+};

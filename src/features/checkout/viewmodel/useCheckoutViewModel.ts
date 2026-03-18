@@ -17,7 +17,11 @@ import {
   fetchAddressConfigFx,
   checkoutReset,
 } from "../store/checkoutStore";
-import { $cartItems, $cartSubtotal, $isCartEmpty } from "@/features/cart/store/cartStore";
+import {
+  $cartItems,
+  $cartSubtotal,
+  $isCartEmpty,
+} from "@/features/cart/store/cartStore";
 import type { CheckoutFormData, CheckoutStep } from "../model/types";
 import { formatPrice } from "@/core/lib/formatters";
 
@@ -65,24 +69,23 @@ export function useCheckoutViewModel() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Step navigation ────────────────────────────────────
-  const handleStepComplete = useCallback(
-    (stepId: CheckoutStep["id"]) => {
-      stepCompleted(stepId);
+  const handleStepComplete = useCallback((stepId: CheckoutStep["id"]) => {
+    stepCompleted(stepId);
 
-      // Auto-advance to next step
-      const currentIndex = STEP_ORDER.indexOf(stepId);
-      if (currentIndex < STEP_ORDER.length - 1) {
-        stepNavigated(STEP_ORDER[currentIndex + 1]);
+    // Auto-advance to next step
+    const currentIndex = STEP_ORDER.indexOf(stepId);
+    if (currentIndex < STEP_ORDER.length - 1) {
+      stepNavigated(STEP_ORDER[currentIndex + 1]);
 
-        // Scroll the next step into view
-        setTimeout(() => {
-          const el = document.getElementById(`step-${STEP_ORDER[currentIndex + 1]}`);
-          el?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 100);
-      }
-    },
-    []
-  );
+      // Scroll the next step into view
+      setTimeout(() => {
+        const el = document.getElementById(
+          `step-${STEP_ORDER[currentIndex + 1]}`,
+        );
+        el?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, []);
 
   const handleStepClick = useCallback(
     (stepId: CheckoutStep["id"]) => {
@@ -92,16 +95,13 @@ export function useCheckoutViewModel() {
         stepNavigated(stepId);
       }
     },
-    [steps, currentStep]
+    [steps, currentStep],
   );
 
   // ── Form updates ───────────────────────────────────────
-  const handleFormChange = useCallback(
-    (data: Partial<CheckoutFormData>) => {
-      formDataUpdated(data);
-    },
-    []
-  );
+  const handleFormChange = useCallback((data: Partial<CheckoutFormData>) => {
+    formDataUpdated(data);
+  }, []);
 
   const handleCountryChange = useCallback((country: string) => {
     countryChanged(country);
@@ -137,7 +137,7 @@ export function useCheckoutViewModel() {
     cartItems,
 
     // Computed
-    formattedSubtotal: formatPrice(cartSubtotal),
+    formattedSubtotal: formatPrice(Number(cartSubtotal)),
     isCartEmpty,
 
     // Actions

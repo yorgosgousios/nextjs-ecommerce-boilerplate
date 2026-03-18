@@ -9,16 +9,19 @@ import type {
   OrderResponse,
   CountryAddressConfig,
 } from "../model/types";
-import type { CartItem } from "@/features/cart/model/types";
+import type { CartOrderItem } from "@/features/cart/model/types";
 
 /**
  * Submit the order.
  */
 export async function submitOrder(payload: {
-  items: CartItem[];
+  items: CartOrderItem[];
   checkout: CheckoutFormData;
 }): Promise<OrderResponse> {
-  const { data } = await apiClient.post<OrderResponse>(ORDERS_ENDPOINT, payload);
+  const { data } = await apiClient.post<OrderResponse>(
+    ORDERS_ENDPOINT,
+    payload,
+  );
   return data;
 }
 
@@ -26,10 +29,10 @@ export async function submitOrder(payload: {
  * Fetch dynamic address fields for a given country.
  */
 export async function fetchAddressConfig(
-  countryCode: string
+  countryCode: string,
 ): Promise<CountryAddressConfig> {
   const { data } = await apiClient.get<CountryAddressConfig>(
-    `${ADDRESS_CONFIG_ENDPOINT}/${countryCode}`
+    `${ADDRESS_CONFIG_ENDPOINT}/${countryCode}`,
   );
   return data;
 }
@@ -41,7 +44,7 @@ export async function fetchShippingCountries(): Promise<
   { code: string; name: string }[]
 > {
   const { data } = await apiClient.get<{ code: string; name: string }[]>(
-    SHIPPING_COUNTRIES_ENDPOINT
+    SHIPPING_COUNTRIES_ENDPOINT,
   );
   return data;
 }

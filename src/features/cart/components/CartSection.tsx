@@ -1,19 +1,26 @@
 import Image from "next/image";
 import Link from "next/link";
-import { useCartViewModel } from "../viewmodel/useCartViewModel";
-import { formatPrice } from "@/core/lib/formatters";
+import { CartViewModel } from "../viewmodel/CartViewModel";
 import styles from "./CartSection.module.scss";
 
-export function CartSection() {
-  const vm = useCartViewModel();
+export const CartSection = () => {
+  const vm = CartViewModel();
+
+  if (vm.isLoading) {
+    return (
+      <div className={styles.loading}>
+        <p>Φόρτωση καλαθιού...</p>
+      </div>
+    );
+  }
 
   if (vm.isEmpty) {
     return (
       <div className={styles.empty}>
-        <h2>Your cart is empty</h2>
-        <p>Looks like you haven&apos;t added anything yet.</p>
-        <Link href="/products" className={styles.continueLink}>
-          Continue Shopping
+        <h2>Το καλάθι σας είναι άδειο</h2>
+        <p>Προσθέστε προϊόντα για να συνεχίσετε</p>
+        <Link href="/gynaikeia" className={styles.continueBtn}>
+          Συνέχεια αγορών
         </Link>
       </div>
     );
@@ -22,80 +29,118 @@ export function CartSection() {
   return (
     <div className={styles.container}>
       <div className={styles.items}>
-        <div className={styles.header}>
-          <h2>Shopping Cart ({vm.itemCount})</h2>
-          <button className={styles.clearButton} onClick={vm.onClearCart}>
-            Clear cart
-          </button>
-        </div>
+        <h1 className={styles.title}>Καλάθι ({vm.itemCount})</h1>
 
         {vm.items.map((item) => (
-          <div key={item.productId} className={styles.item}>
-            <div className={styles.itemImage}>
-              {item.image && (
-                <Image src={item.image} alt={item.name} fill sizes="80px" />
+          <div key={item.order_item_id} className={styles.item}>
+            {/* Image */}
+            <Link href={item.path} className={styles.itemImage}>
+              {item.image[0] && (
+                <Image
+                  src={item.image[0].url}
+                  alt={item.image[0].alt}
+                  width={120}
+                  height={160}
+                  style={{ objectFit: "cover" }}
+                />
               )}
-            </div>
+            </Link>
 
+            {/* Info */}
             <div className={styles.itemInfo}>
-              <h3 className={styles.itemName}>{item.name}</h3>
-              <p className={styles.itemPrice}>{formatPrice(item.price)}</p>
+              <p className={styles.itemBrand}>{item.brand}</p>
+              <Link href={item.path} className={styles.itemTitle}>
+                {item.product_title}
+              </Link>
+              <p className={styles.itemMeta}>
+                {item.color_name} | {item.variation_size}
+              </p>
+              <p className={styles.itemAvailability}>{item.availability}</p>
+
+              {/* Pricing */}
+              <div className={styles.itemPricing}>
+                {item.list_price_raw > item.unit_price_raw && (
+                  <span className={styles.itemOldPrice}>{item.list_price}</span>
+                )}
+                <span className={styles.itemPrice}>{item.unit_price}</span>
+              </div>
+
+              {/* Quantity */}
+              <div className={styles.itemActions}>
+                <div className={styles.quantity}>
+                  <button
+                    onClick={() =>
+                      vm.onUpdateQuantity(item.order_item_id, item.quantity - 1)
+                    }
+                    disabled={vm.isMutating || item.quantity <= 1}
+                  >
+                    −
+                  </button>
+                  <span>{item.quantity}</span>
+                  <button
+                    onClick={() =>
+                      vm.onUpdateQuantity(item.order_item_id, item.quantity + 1)
+                    }
+                    disabled={vm.isMutating}
+                  >
+                    +
+                  </button>
+                </div>
+
+                <button
+                  className={styles.removeBtn}
+                  onClick={() => vm.onRemoveItem(item.order_item_id)}
+                  disabled={vm.isMutating}
+                >
+                  Αφαίρεση
+                </button>
+              </div>
             </div>
 
-            <div className={styles.itemQuantity}>
-              <button
-                onClick={() =>
-                  vm.onQuantityChange(item.productId, item.quantity - 1)
-                }
-              >
-                −
-              </button>
-              <span>{item.quantity}</span>
-              <button
-                onClick={() =>
-                  vm.onQuantityChange(item.productId, item.quantity + 1)
-                }
-              >
-                +
-              </button>
+            {/* Line total */}
+            <div className={styles.itemTotal}>
+              <span>{item.price}</span>
             </div>
-
-            <p className={styles.itemTotal}>
-              {formatPrice(item.price * item.quantity)}
-            </p>
-
-            <button
-              className={styles.removeButton}
-              onClick={() => vm.onRemove(item.productId)}
-            >
-              ✕
-            </button>
           </div>
         ))}
       </div>
 
+      {/* Summary sidebar */}
       <div className={styles.summary}>
-        <h3>Order Summary</h3>
+        <h3>Σύνοψη</h3>
+
         <div className={styles.summaryRow}>
-          <span>Subtotal</span>
-          <span>{vm.formattedSubtotal}</span>
+          <span>Υποσύνολο</span>
+          <span>{vm.subtotal}</span>
         </div>
-        <div className={styles.summaryRow}>
-          <span>Shipping</span>
-          <span>Calculated at checkout</span>
+
+        {vm.adjustments.map((adj, i) => (
+          <div key={i} className={styles.summaryRow}>
+            <span>{adj.label}</span>
+            <span>{adj.amount}</span>
+          </div>
+        ))}
+
+        {vm.coupons.map((coupon, i) => (
+          <div key={i} className={styles.summaryRowDiscount}>
+            <span>Κουπόνι: {coupon.code}</span>
+            <span>-{coupon.amount}</span>
+          </div>
+        ))}
+
+        <div className={styles.summaryTotal}>
+          <span>Σύνολο</span>
+          <span>{vm.total}</span>
         </div>
-        <div className={`${styles.summaryRow} ${styles.total}`}>
-          <span>Total</span>
-          <span>{vm.formattedSubtotal}</span>
-        </div>
-        <button
-          className={styles.checkoutButton}
-          onClick={vm.onProceedToCheckout}
-          disabled={vm.isValidating}
-        >
-          {vm.isValidating ? "Validating…" : "Proceed to Checkout"}
-        </button>
+
+        <Link href="/checkout" className={styles.checkoutBtn}>
+          Ολοκλήρωση παραγγελίας
+        </Link>
+
+        <Link href="/gynaikeia" className={styles.continueLink}>
+          Συνέχεια αγορών
+        </Link>
       </div>
     </div>
   );
-}
+};

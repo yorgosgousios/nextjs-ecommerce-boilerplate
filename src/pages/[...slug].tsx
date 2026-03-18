@@ -4,6 +4,14 @@ import Head from "next/head";
 import { resolveRoute } from "@/core/api/routerService";
 import type { RouteResolution } from "@/core/api/routerModel";
 
+// SEO
+import { JsonLd } from "@/core/seo/JsonLd";
+import {
+  generateProductJsonLd,
+  generateProductListingJsonLd,
+  generateBreadcrumbJsonLd,
+} from "@/core/seo/structuredData";
+
 // Feature components
 import { ProductDetail } from "@/features/product/components/ProductDetail";
 import {
@@ -15,7 +23,7 @@ import { LandingPageView } from "@/features/landing/components/LandingPageView";
 import { PageGone } from "@/core/ui/PageGone";
 
 // Feature services
-
+import { fetchProductById } from "@/features/product/services/productSerivce";
 import { fetchProductListingByCategory } from "@/features/product-listing/service/productListingService";
 import {
   fetchBlogPost,
@@ -23,7 +31,6 @@ import {
 } from "@/features/blog/service/blogService";
 import { fetchBasicPage } from "@/features/basic-page/service/basicPageService";
 import { fetchLandingPage } from "@/features/landing/service/landingService";
-import { fetchProductById } from "@/features/product/services/productSerivce";
 
 // ─────────────────────────────────────────────────────────
 // Resolve service function by type + bundle
@@ -133,6 +140,37 @@ interface CatchAllPageProps {
 }
 
 // ─────────────────────────────────────────────────────────
+// Structured data (JSON-LD) by pageType
+// ─────────────────────────────────────────────────────────
+
+const getStructuredData = (pageType: string, pageData: any) => {
+  switch (pageType) {
+    case "product":
+      return (
+        <>
+          <JsonLd data={generateProductJsonLd(pageData)} />
+          {pageData.breadcrumbs && (
+            <JsonLd data={generateBreadcrumbJsonLd(pageData.breadcrumbs)} />
+          )}
+        </>
+      );
+
+    case "product_listing":
+      return (
+        <>
+          <JsonLd data={generateProductListingJsonLd(pageData)} />
+          {pageData.breadcrumbs && (
+            <JsonLd data={generateBreadcrumbJsonLd(pageData.breadcrumbs)} />
+          )}
+        </>
+      );
+
+    default:
+      return null;
+  }
+};
+
+// ─────────────────────────────────────────────────────────
 // Page Component
 // ─────────────────────────────────────────────────────────
 
@@ -150,6 +188,7 @@ const CatchAllPage = (
         )}
         {meta.ogImage && <meta property="og:image" content={meta.ogImage} />}
         <meta property="og:title" content={meta.title} />
+        {getStructuredData(page.pageType, pageData)}
       </Head>
 
       {renderPageByType(page.pageType, pageData)}

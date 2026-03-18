@@ -12,7 +12,9 @@ export function CheckoutSection() {
     return (
       <div className={styles.confirmation}>
         <h2>Order Confirmed!</h2>
-        <p>Your order ID is: <strong>{vm.orderResult.orderId}</strong></p>
+        <p>
+          Your order ID is: <strong>{vm.orderResult.orderId}</strong>
+        </p>
         <p>Total: {formatPrice(vm.orderResult.total)}</p>
       </div>
     );
@@ -85,7 +87,11 @@ interface StepProps {
 }
 
 function ContactStep({ isOpen, formData, onChange, onComplete }: StepProps) {
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
     defaultValues: { email: formData.email ?? "", phone: formData.phone ?? "" },
   });
 
@@ -107,7 +113,9 @@ function ContactStep({ isOpen, formData, onChange, onComplete }: StepProps) {
             type="email"
             placeholder="your@email.com"
           />
-          {errors.email && <span className={styles.error}>{errors.email.message}</span>}
+          {errors.email && (
+            <span className={styles.error}>{errors.email.message}</span>
+          )}
         </div>
         <div className={styles.field}>
           <label>Phone</label>
@@ -137,7 +145,11 @@ function ShippingStep({
   isLoading: boolean;
   onCountryChange: (country: string) => void;
 }) {
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
     defaultValues: {
       firstName: formData.firstName ?? "",
       lastName: formData.lastName ?? "",
@@ -178,12 +190,16 @@ function ShippingStep({
             <div className={styles.field}>
               <label>First Name *</label>
               <input {...register("firstName", { required: "Required" })} />
-              {errors.firstName && <span className={styles.error}>{errors.firstName.message}</span>}
+              {errors.firstName && (
+                <span className={styles.error}>{errors.firstName.message}</span>
+              )}
             </div>
             <div className={styles.field}>
               <label>Last Name *</label>
               <input {...register("lastName", { required: "Required" })} />
-              {errors.lastName && <span className={styles.error}>{errors.lastName.message}</span>}
+              {errors.lastName && (
+                <span className={styles.error}>{errors.lastName.message}</span>
+              )}
             </div>
           </div>
           <div className={styles.field}>
@@ -279,21 +295,26 @@ function ReviewStep({
       <h3>Review Your Order</h3>
       <div className={styles.reviewSection}>
         <h4>Contact</h4>
-        <p>{formData.email} — {formData.phone}</p>
+        <p>
+          {formData.email} — {formData.phone}
+        </p>
       </div>
       <div className={styles.reviewSection}>
         <h4>Shipping</h4>
         <p>
-          {formData.firstName} {formData.lastName}<br />
-          {formData.address}<br />
+          {formData.firstName} {formData.lastName}
+          <br />
+          {formData.address}
+          <br />
           {formData.city}, {formData.postalCode}
         </p>
       </div>
       <div className={styles.reviewSection}>
         <h4>Items ({cartItems.length})</h4>
         {cartItems.map((item) => (
-          <p key={item.productId}>
-            {item.name} × {item.quantity} — {formatPrice(item.price * item.quantity)}
+          <p key={item.product_id}>
+            {item.product_title} × {item.quantity} —{" "}
+            {formatPrice(Number(item.price) * item.quantity)}
           </p>
         ))}
         <p className={styles.reviewTotal}>Total: {subtotal}</p>

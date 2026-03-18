@@ -1,6 +1,6 @@
 import { useCallback, useState, useMemo } from "react";
 import type { ProductDetailResponse, ProductVariation } from "../model/types";
-import { addToCart } from "@/features/cart/store/cartStore";
+import { addToCartFx } from "@/features/cart/store/cartStore";
 
 interface UseProductDetailParams {
   product: ProductDetailResponse;
@@ -39,17 +39,18 @@ export const ProductDetailViewModel = ({ product }: UseProductDetailParams) => {
   );
 
   const handleAddToCart = useCallback(() => {
-    addToCart({
-      productId: product.product_id,
-      name: `${product.title} - ${selectedVariation.name}`,
-      price: selectedVariation.price_raw,
-      image: product.productMedia[0]?.url ?? "",
-      quantity,
-    });
+    addToCartFx([
+      {
+        purchased_entity_id: Number(product.variations[0].id),
+        purchased_entity_type: "commerce_product_variation",
+        quantity,
+        combine: true,
+      },
+    ]);
 
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
-  }, [product, selectedVariation, quantity]);
+  }, [product, quantity]);
 
   const handleQuantityChange = useCallback((newQuantity: number) => {
     if (newQuantity < 1) return;

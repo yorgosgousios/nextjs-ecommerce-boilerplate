@@ -6,7 +6,7 @@ import type {
   OrderResponse,
 } from "../model/types";
 import { submitOrder, fetchAddressConfig } from "../service/checkoutService";
-import { $cartItems, clearCart } from "@/features/cart/store/cartStore";
+import { $cartOrderId, clearCartFx } from "@/features/cart/store/cartStore";
 
 // ── Events ───────────────────────────────────────────────
 export const stepCompleted = createEvent<CheckoutStep["id"]>();
@@ -32,7 +32,7 @@ export const $steps = createStore<CheckoutStep[]>([
   { id: "review", label: "Review", completed: false },
 ])
   .on(stepCompleted, (steps, completedId) =>
-    steps.map((s) => (s.id === completedId ? { ...s, completed: true } : s))
+    steps.map((s) => (s.id === completedId ? { ...s, completed: true } : s)),
   )
   .reset(checkoutReset);
 
@@ -72,5 +72,7 @@ sample({
 // Clear cart on successful order
 sample({
   clock: submitOrderFx.done,
-  target: clearCart,
+  source: $cartOrderId,
+  filter: (orderId): orderId is number => orderId !== null,
+  target: clearCartFx,
 });
