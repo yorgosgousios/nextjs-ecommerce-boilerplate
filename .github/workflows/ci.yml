@@ -21,7 +21,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: yarn
 
-      - run: yarn --frozen-lockfile
+      - run: corepack enable
+
+      - run: yarn install --immutable
 
       - run: yarn lint
 
@@ -36,9 +38,11 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: yarn
 
-      - run: yarn --frozen-lockfile
+      - run: corepack enable
 
-      - run: npx tsc --noEmit
+      - run: yarn install --immutable
+
+      - run: yarn tsc --noEmit
 
   build:
     name: Build
@@ -52,9 +56,10 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: yarn
 
-      - run: yarn --frozen-lockfile
+      - run: corepack enable
+
+      - run: yarn install --immutable
 
       - run: yarn build
         env:
-          # Add any env vars your build needs here
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
