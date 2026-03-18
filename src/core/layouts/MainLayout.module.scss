@@ -1,0 +1,76 @@
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #eee;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 100;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: #1a1a2e;
+}
+
+.nav {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+
+  a {
+    text-decoration: none;
+    color: #4a4a5a;
+    font-weight: 500;
+    transition: color 0.2s;
+
+    &:hover {
+      color: #1a1a2e;
+    }
+  }
+}
+
+.cartLink {
+  position: relative;
+}
+
+.cartBadge {
+  position: absolute;
+  top: -8px;
+  right: -12px;
+  background: #2d6a8f;
+  color: #fff;
+  font-size: 0.7rem;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.main {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.footer {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #eee;
+  text-align: center;
+  color: #999;
+  font-size: 0.85rem;
+}

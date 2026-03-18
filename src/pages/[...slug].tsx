@@ -1,0 +1,270 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
+import Head from "next/head";
+import { resolveRoute } from "@/core/api/routerService";
+import type { RouteResolution } from "@/core/api/routerModel";
+
+// Feature components
+import { ProductDetail } from "@/features/products/components/ProductDetail";
+import {
+  BlogView,
+  BlogListView,
+} from "@/features/blog/components/BlogComponents";
+import { BasicPageView } from "@/features/basic-page/components/BasicPageView";
+import { LandingPageView } from "@/features/landing/components/LandingPageView";
+import { PageGone } from "@/core/ui/PageGone";
+
+// Feature services
+import {
+  fetchProductById,
+  fetchProductListingByCategory,
+} from "@/features/products/service/productsService";
+import {
+  fetchBlogPost,
+  fetchBlogListing,
+} from "@/features/blog/service/blogService";
+import { fetchBasicPage } from "@/features/basic-page/service/basicPageService";
+import { fetchLandingPage } from "@/features/landing/service/landingService";
+
+// ─────────────────────────────────────────────────────────
+// Resolve service function by type + bundle
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Given the route data from the backend, return the correct service function
+ * and the pageType string used for rendering.
+ *
+ * Same pattern as the old Envie slug's getPageDataByType switch,
+ * but returns { apiGetPageData, pageType } instead of calling the function directly.
+ */
+interface PageDataEntry {
+  apiGetPageData: (id: number, page: number) => Promise<any>;
+  pageType: string;
+}
+
+const getPageDataByType = (
+  routeData: RouteResolution,
+): PageDataEntry | null => {
+  switch (routeData.type) {
+    case "commerce_product":
+      return { apiGetPageData: fetchProductById, pageType: "product" };
+
+    case "taxonomy_term":
+      switch (routeData.bundle) {
+        case "blog_categories":
+          return { apiGetPageData: fetchBlogListing, pageType: "blog_listing" };
+        default:
+          return {
+            apiGetPageData: fetchProductListingByCategory,
+            pageType: "product_listing",
+          };
+      }
+
+    case "node":
+      switch (routeData.bundle) {
+        case "landing_page":
+          return { apiGetPageData: fetchLandingPage, pageType: "landing_page" };
+        case "blog":
+        case "article":
+          return { apiGetPageData: fetchBlogPost, pageType: "blog" };
+        case "page":
+          return { apiGetPageData: fetchBasicPage, pageType: "basic_page" };
+        default:
+          return null;
+      }
+
+    default:
+      return null;
+  }
+};
+
+// ─────────────────────────────────────────────────────────
+// Render component by pageType
+// ─────────────────────────────────────────────────────────
+
+const renderPageByType = (pageType: string, pageData: any, page: any) => {
+  switch (pageType) {
+    case "product":
+      return <ProductDetail product={pageData} />;
+
+    case "product_listing":
+      // TODO: Replace with proper ProductListView once API response shape is known
+      return (
+        <div>
+          <h1>Product Listing</h1>
+          <pre
+            style={{ fontSize: "12px", maxHeight: "80vh", overflow: "auto" }}
+          >
+            {JSON.stringify(pageData, null, 2)}
+          </pre>
+        </div>
+      );
+
+    case "blog":
+      return <BlogView post={pageData} />;
+
+    case "blog_listing":
+      return <BlogListView listing={pageData} />;
+
+    case "basic_page":
+      return <BasicPageView page={pageData} />;
+
+    case "landing_page":
+      return <LandingPageView page={pageData} />;
+
+    case "gone":
+      return <PageGone />;
+
+    default:
+      return null;
+  }
+};
+
+// ─────────────────────────────────────────────────────────
+// Page props
+// ─────────────────────────────────────────────────────────
+
+interface CatchAllPageProps {
+  page: {
+    pageType: string;
+    id: number;
+    type: string;
+    bundle: string;
+    path: string;
+  };
+  pageData: any;
+  meta: {
+    title: string;
+    description: string;
+    ogImage: string | null;
+  };
+}
+
+// ─────────────────────────────────────────────────────────
+// Page Component
+// ─────────────────────────────────────────────────────────
+
+/**
+ * CMS-Driven Catch-All Page.
+ *
+ * FLOW:
+ * 1. User visits any path (e.g., /shoes/nike-air-max)
+ * 2. getServerSideProps resolves the route via backend API
+ * 3. getPageDataByType picks the right service function (switch)
+ * 4. Data is fetched ON THE SERVER, passed as props
+ * 5. renderPageByType picks the right component to render (switch)
+ */
+const CatchAllPage = (
+  props: InferGetServerSidePropsType<typeof getServerSideProps>,
+) => {
+  const { page, pageData, meta } = props as CatchAllPageProps;
+
+  return (
+    <>
+      <Head>
+        <title>{meta.title}</title>
+        {meta.description && (
+          <meta name="description" content={meta.description} />
+        )}
+        {meta.ogImage && <meta property="og:image" content={meta.ogImage} />}
+        <meta property="og:title" content={meta.title} />
+      </Head>
+
+      {renderPageByType(page.pageType, pageData, page)}
+    </>
+  );
+};
+
+export default CatchAllPage;
+
+// ─────────────────────────────────────────────────────────
+// Server-Side Data Fetching
+// ─────────────────────────────────────────────────────────
+
+export const getServerSideProps: GetServerSideProps<CatchAllPageProps> = async (
+  ctx,
+) => {
+  const slugParts = ctx.params?.slug as string[] | undefined;
+  const path = slugParts?.join("/") ?? "";
+  const locale = ctx.locale ?? ctx.defaultLocale ?? "el";
+
+  // ── Step 1: Resolve the route ──────────────────────────
+  const routeData = await resolveRoute(path, locale);
+
+  if (!routeData) {
+    return { notFound: true };
+  }
+
+  // Handle redirects
+  if (
+    routeData.redirect &&
+    routeData.path !== `/${path}` &&
+    (routeData.status === 301 || routeData.status === 302)
+  ) {
+    return {
+      redirect: {
+        destination: routeData.path ?? routeData.redirect,
+        permanent: routeData.status === 301,
+      },
+    };
+  }
+
+  // Handle gone (410)
+  if (routeData.status === 410 || routeData.type === "gone") {
+    return {
+      props: {
+        page: { pageType: "gone", id: 0, type: "gone", bundle: "", path },
+        pageData: null,
+        meta: { title: "Page Gone", description: "", ogImage: null },
+      },
+    };
+  }
+
+  // ── Step 2: Find the service function ──────────────────
+  const entry = getPageDataByType(routeData);
+
+  if (!entry) {
+    console.error(
+      "[CatchAllPage] No service for:",
+      routeData.type,
+      routeData.bundle,
+    );
+    return { notFound: true };
+  }
+
+  // ── Step 3: Fetch the page data ────────────────────────
+  try {
+    const pageData = await entry.apiGetPageData(routeData.id, 0);
+
+    if (!pageData) {
+      return { notFound: true };
+    }
+
+    const page = {
+      pageType: entry.pageType,
+      id: routeData.id,
+      type: routeData.type,
+      bundle: routeData.bundle,
+      path: routeData.path,
+    };
+
+    const meta = {
+      title:
+        pageData?.metaTitle ?? pageData?.title ?? pageData?.name ?? "Store",
+      description:
+        pageData?.metaDescription ?? pageData?.description?.slice(0, 160) ?? "",
+      ogImage: pageData?.image ?? pageData?.images?.[0] ?? null,
+    };
+
+    return {
+      props: {
+        page,
+        pageData,
+        meta,
+      },
+    };
+  } catch (error) {
+    console.error("[CatchAllPage] Error fetching page data:", error);
+    return { notFound: true };
+  }
+};
