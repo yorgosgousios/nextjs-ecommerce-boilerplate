@@ -42,14 +42,12 @@ export const CartViewModel = () => {
   const coupons = useUnit($cartCoupons);
 
   const handleAddToCart = useCallback((variationId: number, quantity = 1) => {
-    addToCartFx([
-      {
-        purchased_entity_type: "commerce_product_variation",
-        purchased_entity_id: variationId,
-        quantity,
-        combine: true,
-      },
-    ]);
+    addToCartFx({
+      purchased_entity_type: "commerce_product_variation",
+      purchased_entity_id: variationId,
+      quantity,
+      combine: true,
+    });
   }, []);
 
   const handleUpdateQuantity = useCallback(

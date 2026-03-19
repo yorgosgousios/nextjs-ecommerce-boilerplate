@@ -12,8 +12,8 @@ import {
 
 export const fetchCartFx = createEffect(fetchCart);
 
-export const addToCartFx = createEffect(async (items: [AddToCartPayload]) =>
-  addToCart(items),
+export const addToCartFx = createEffect<AddToCartPayload, CartResponse>(
+  async (payload) => addToCart([payload]),
 );
 
 export const updateQuantityFx = createEffect(

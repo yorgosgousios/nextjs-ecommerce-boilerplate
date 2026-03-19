@@ -39,14 +39,12 @@ export const ProductDetailViewModel = ({ product }: UseProductDetailParams) => {
   );
 
   const handleAddToCart = useCallback(() => {
-    addToCartFx([
-      {
-        purchased_entity_id: Number(product.variations[0].id),
-        purchased_entity_type: "commerce_product_variation",
-        quantity,
-        combine: true,
-      },
-    ]);
+    addToCartFx({
+      purchased_entity_id: Number(product.variations[0].id),
+      purchased_entity_type: "commerce_product_variation",
+      quantity,
+      combine: true,
+    });
 
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);

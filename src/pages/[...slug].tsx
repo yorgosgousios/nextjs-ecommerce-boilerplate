@@ -2,7 +2,7 @@
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import { resolveRoute } from "@/core/api/routerService";
-import type { RouteResolution } from "@/core/api/routerModel";
+import { getPageDataByType } from "@/core/api/pageResolver";
 
 // SEO
 import { JsonLd } from "@/core/seo/JsonLd";
@@ -21,61 +21,6 @@ import {
 import { BasicPageView } from "@/features/basic-page/components/BasicPageView";
 import { LandingPageView } from "@/features/landing/components/LandingPageView";
 import { PageGone } from "@/core/ui/PageGone";
-
-// Feature services
-import { fetchProductById } from "@/features/product/services/productSerivce";
-import { fetchProductListingByCategory } from "@/features/product-listing/service/productListingService";
-import {
-  fetchBlogPost,
-  fetchBlogListing,
-} from "@/features/blog/service/blogService";
-import { fetchBasicPage } from "@/features/basic-page/service/basicPageService";
-import { fetchLandingPage } from "@/features/landing/service/landingService";
-
-// ─────────────────────────────────────────────────────────
-// Resolve service function by type + bundle
-// ─────────────────────────────────────────────────────────
-
-interface PageDataEntry {
-  apiGetPageData: (id: number, page: number) => Promise<any>;
-  pageType: string;
-}
-
-const getPageDataByType = (
-  routeData: RouteResolution,
-): PageDataEntry | null => {
-  switch (routeData.type) {
-    case "commerce_product":
-      return { apiGetPageData: fetchProductById, pageType: "product" };
-
-    case "taxonomy_term":
-      switch (routeData.bundle) {
-        case "blog_categories":
-          return { apiGetPageData: fetchBlogListing, pageType: "blog_listing" };
-        default:
-          return {
-            apiGetPageData: fetchProductListingByCategory,
-            pageType: "product_listing",
-          };
-      }
-
-    case "node":
-      switch (routeData.bundle) {
-        case "landing_page":
-          return { apiGetPageData: fetchLandingPage, pageType: "landing_page" };
-        case "blog":
-        case "article":
-          return { apiGetPageData: fetchBlogPost, pageType: "blog" };
-        case "page":
-          return { apiGetPageData: fetchBasicPage, pageType: "basic_page" };
-        default:
-          return null;
-      }
-
-    default:
-      return null;
-  }
-};
 
 // ─────────────────────────────────────────────────────────
 // Render component by pageType
