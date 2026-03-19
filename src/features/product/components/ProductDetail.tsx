@@ -1,9 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-
+import { ProductDetailViewModel } from "../viewmodel/ProductDetailViewModel";
 import type { ProductDetailResponse } from "../model/types";
 import styles from "./ProductDetail.module.scss";
-import { ProductDetailViewModel } from "../viewmodel/ProductDetailViewModel";
 
 interface ProductDetailProps {
   product: ProductDetailResponse;
@@ -38,7 +37,13 @@ export const ProductDetail = ({ product }: ProductDetailProps) => {
                 }`}
                 onClick={() => vm.onImageSelect(idx)}
               >
-                <Image src={media.url} alt={media.alt} fill sizes="80px" />
+                <Image
+                  src={media.url}
+                  alt={media.alt}
+                  fill
+                  sizes="80px"
+                  loading="lazy"
+                />
               </button>
             ))}
           </div>

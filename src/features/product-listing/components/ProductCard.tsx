@@ -5,9 +5,14 @@ import styles from "./ProductCard.module.scss";
 
 interface ProductCardProps {
   product: ProductListingItem;
+  /** Mark as true for first 4-8 cards (above the fold) to preload images */
+  priority?: boolean;
 }
 
-export const ProductCard = ({ product }: ProductCardProps) => {
+export const ProductCard = ({
+  product,
+  priority = false,
+}: ProductCardProps) => {
   const isOnSale = product.discount_percentage !== null;
 
   return (
@@ -18,8 +23,10 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             src={product.image[0].url}
             alt={product.image[0].alt}
             fill
-            sizes="(max-width: 768px) 50vw, 25vw"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className={styles.image}
+            priority={priority}
+            loading={priority ? undefined : "lazy"}
           />
         )}
         {product.tag_label && (

@@ -4,6 +4,7 @@ import { MainLayout } from "@/core/layouts/MainLayout";
 import ErrorBoundary from "@/core/ui/ErrorBoundary";
 import { initCart } from "@/features/cart/store/cartStore";
 import { useScrollRestoration } from "@/core/hooks/useScrollRestoration";
+import { inter } from "@/core/lib/fonts";
 import "@/styles/globals.scss";
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -16,10 +17,12 @@ export default function App({ Component, pageProps }: AppProps) {
   useScrollRestoration();
 
   return (
-    <MainLayout>
-      <ErrorBoundary>
-        <Component {...pageProps} />
-      </ErrorBoundary>
-    </MainLayout>
+    <div className={inter.className}>
+      <MainLayout>
+        <ErrorBoundary>
+          <Component {...pageProps} />
+        </ErrorBoundary>
+      </MainLayout>
+    </div>
   );
 }

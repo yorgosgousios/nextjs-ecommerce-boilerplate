@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
+import dynamic from "next/dynamic";
 import { resolveRoute } from "@/core/api/routerService";
 import { getPageDataByType } from "@/core/api/pageResolver";
 
@@ -11,16 +12,37 @@ import {
   generateProductListingJsonLd,
   generateBreadcrumbJsonLd,
 } from "@/core/seo/structuredData";
+import { ProductListSection } from "@/features/product-listing/components/ProductListSection";
 
-// Feature components
-import { ProductDetail } from "@/features/product/components/ProductDetail";
-import {
-  BlogView,
-  BlogListView,
-} from "@/features/blog/components/BlogComponents";
-import { BasicPageView } from "@/features/basic-page/components/BasicPageView";
-import { LandingPageView } from "@/features/landing/components/LandingPageView";
-import { PageGone } from "@/core/ui/PageGone";
+// Feature components — dynamically imported
+// Only the component needed for the current page type is loaded.
+// The rest are split into separate chunks and never downloaded.
+const ProductDetail = dynamic(() =>
+  import("@/features/product/components/ProductDetail").then(
+    (m) => m.ProductDetail,
+  ),
+);
+const BlogView = dynamic(() =>
+  import("@/features/blog/components/BlogComponents").then((m) => m.BlogView),
+);
+const BlogListView = dynamic(() =>
+  import("@/features/blog/components/BlogComponents").then(
+    (m) => m.BlogListView,
+  ),
+);
+const BasicPageView = dynamic(() =>
+  import("@/features/basic-page/components/BasicPageView").then(
+    (m) => m.BasicPageView,
+  ),
+);
+const LandingPageView = dynamic(() =>
+  import("@/features/landing/components/LandingPageView").then(
+    (m) => m.LandingPageView,
+  ),
+);
+const PageGone = dynamic(() =>
+  import("@/core/ui/PageGone").then((m) => m.PageGone),
+);
 
 // ─────────────────────────────────────────────────────────
 // Render component by pageType
@@ -36,11 +58,12 @@ const renderPageByType = (pageType: string, pageData: any) => {
       return (
         <div>
           <h1>Product Listing</h1>
-          <pre
+          <ProductListSection initialData={pageData} />
+          {/* <pre
             style={{ fontSize: "12px", maxHeight: "80vh", overflow: "auto" }}
           >
             {JSON.stringify(pageData, null, 2)}
-          </pre>
+          </pre> */}
         </div>
       );
 
@@ -76,6 +99,7 @@ interface CatchAllPageProps {
     bundle: string;
     path: string;
   };
+
   pageData: any;
   meta: {
     title: string;

@@ -27,19 +27,18 @@ interface ProductListParams {
 export const ProductListViewModel = ({ initialData }: ProductListParams) => {
   const isHydrated = useRef(false);
 
+  // Hydrate from SSR on first render
+  if (!isHydrated.current) {
+    isHydrated.current = true;
+    listingHydrated(initialData);
+  }
+
   const products = useUnit($products);
   const facets = useUnit($facets);
   const pager = useUnit($pager);
   const sortConfig = useUnit($sortConfig);
   const categoryInfo = useUnit($categoryInfo);
   const isLoading = useUnit($isLoading);
-
-  // Hydrate from SSR on first render
-  useEffect(() => {
-    if (isHydrated.current) return;
-    isHydrated.current = true;
-    listingHydrated(initialData);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePageChange = useCallback((page: number) => {
     pageChanged(page);
