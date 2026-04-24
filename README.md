@@ -1,7 +1,23 @@
 # Next.js E-Commerce Boilerplate
 
+![CI](https://github.com/yorgosgousios/nextjs-ecommerce-boilerplate/actions/workflows/ci.yml/badge.svg)
+
 Next.js e-commerce boilerplate with CMS-driven routing, MVVM architecture, and Effector state management.
 Built for Drupal-backed e-commerce projects using the Pages Router.
+
+## Why This Exists
+
+Most Next.js e-commerce examples assume the frontend controls routing. In CMS-driven projects, the backend owns the URL structure — the frontend doesn't know what `/gynaikeia/sneakers` is until it asks the API.
+
+This boilerplate demonstrates how to solve that problem cleanly: a single catch-all route that resolves any CMS path, fetches the right data, and renders the right component — all server-side on first load, with client-side interactivity after hydration.
+
+It also serves as a reference implementation for:
+
+- **MVVM architecture in Next.js** — separating API calls, state management, viewmodels, and UI components
+- **Effector state management** — reactive stores that hydrate from SSR props and take over on the client
+- **Testable architecture** — the routing logic, store behaviour, and SEO output are all unit-tested in isolation
+
+Built against a real Drupal Commerce backend API, not mocked data.
 
 ---
 
@@ -12,7 +28,7 @@ Built for Drupal-backed e-commerce projects using the Pages Router.
 3. [The Catch-All Slug File — In Depth](#the-catch-all-slug-file)
 4. [Project Structure](#project-structure)
 5. [Architecture Layers](#architecture-layers)
-6. [Cart — Server-Side](#cart--server-side)
+6. [Cart — API-Driven](#cart--api-driven)
 7. [SEO — JSON-LD Structured Data](#seo--json-ld-structured-data)
 8. [Error Handling](#error-handling)
 9. [Adding a New Page Type](#adding-a-new-page-type)
@@ -142,7 +158,7 @@ What runs here:
 
 Located in `core/api/pageResolver.ts`. This is a switch statement that maps the backend's route response to the correct service function.
 
-```tsx
+```
 const getPageDataByType = (routeData: RouteResolution): PageDataEntry | null => {
   switch (routeData.type) {
     case "commerce_product":
@@ -174,7 +190,7 @@ Returns `{ apiGetPageData, pageType }` or `null` (→ 404). Extracted into its o
 
 ### Part 2: `renderPageByType` — "Which component do I render?"
 
-```tsx
+```
 const renderPageByType = (pageType: string, pageData: any, page: any) => {
   switch (pageType) {
     case "product":
@@ -190,7 +206,7 @@ const renderPageByType = (pageType: string, pageData: any, page: any) => {
 
 ### Part 3: `getStructuredData` — "What JSON-LD do I inject?"
 
-```tsx
+```
 const getStructuredData = (pageType: string, pageData: any) => {
   switch (pageType) {
     case "product":
@@ -219,7 +235,7 @@ const getStructuredData = (pageType: string, pageData: any) => {
 
 ### Props shape
 
-```tsx
+```
 {
   page: {
     pageType: "product_listing",
@@ -298,7 +314,7 @@ src/
 │   │       ├── ProductListSection.tsx
 │   │       └── Pagination.tsx
 │   │
-│   ├── cart/                               # Server-side cart (API-driven)
+│   ├── cart/                               # API-driven cart
 │   │   ├── model/types.ts                  # CartResponse, CartOrderItem, AddToCartPayload
 │   │   ├── service/cartService.ts          # fetchCart, addToCart, updateQuantity, remove, clear
 │   │   ├── store/cartStore.ts              # $cart, $cartItems, $cartItemCount, effects
@@ -384,9 +400,13 @@ Pure rendering. Receives data from the viewmodel (or directly from props for SSR
 
 ---
 
-## Cart — Server-Side
+## Cart — API-Driven
 
-The cart is fully server-side — the backend manages cart state, the frontend makes API calls for every action. No localStorage.
+The cart is fully managed by the backend API — the frontend holds no cart state locally. Every user action (add, update, remove) is a direct API call, and the backend returns the full updated cart in response. The frontend simply replaces its local store with whatever the API returns.
+
+### Why API-driven instead of client-side state?
+
+The backend is the single source of truth for pricing, stock availability, discounts, and tax calculations. Keeping cart logic on the server means the frontend never has to worry about price mismatches, stale stock data, or coupon validation — the API handles all of that and returns the correct totals.
 
 ### How it works
 
@@ -397,28 +417,37 @@ User visits site for the first time
   → getCartToken() generates UUID → stored in cookie (500 days)
   → GET /api/v1/cart (Commerce-Cart-Token: abc-123) → empty cart or null
 
-User adds item
-  → POST /api/v1/cart/add (Commerce-Cart-Token: abc-123, body: [{ variation_id, quantity }])
+User clicks "Add to Cart"
+  → POST /api/v1/cart/add
+    Header: Commerce-Cart-Token: abc-123
+    Body: [{ variation_id: 456, quantity: 1 }]
+  → Backend adds item, calculates totals, applies any discounts
   → Response: full updated cart (order_items, totals, adjustments)
+  → Frontend replaces $cart store with the response
 
-User updates quantity
-  → PATCH /api/v1/cart/{order_id}/items/{order_item_id} (body: { quantity })
+User changes quantity
+  → PATCH /api/v1/cart/{order_id}/items/{order_item_id}
+    Body: { quantity: 3 }
+  → Backend recalculates totals
   → Response: full updated cart
+  → Frontend replaces $cart store
 
 User removes item
   → DELETE /api/v1/cart/{order_id}/items/{order_item_id}
   → Response: full updated cart
+  → Frontend replaces $cart store
 
 User clears cart
   → DELETE /api/v1/cart/{order_id}/items
   → Response: 204 (no body)
+  → Frontend sets $cart to null
 ```
 
-Every mutation returns the full updated cart — the store always replaces, never merges.
+The key pattern: **every mutation returns the complete cart**. The frontend store always replaces, never merges. This guarantees the UI is always in sync with the backend — no drift, no stale prices, no race conditions.
 
 ### Store architecture
 
-```tsx
+```
 $cart (CartResponse | null)           ← full API response, replaced on every mutation
 ├── $cartItems                        ← $cart.order_items
 ├── $cartItemCount                    ← sum of quantities
@@ -429,6 +458,8 @@ $cart (CartResponse | null)           ← full API response, replaced on every m
 ├── $cartAdjustments                  ← $cart.adjustments (tax, etc.)
 └── $cartCoupons                      ← $cart.coupons
 ```
+
+All derived stores (`$cartItems`, `$cartItemCount`, etc.) are computed from `$cart` — when `$cart` is replaced, every derived store updates automatically.
 
 ### Initialization
 
@@ -498,7 +529,7 @@ src/features/faq/
 
 In `core/api/endpoints.ts`:
 
-```tsx
+```
 export const FAQ_ENDPOINT = "/api/v1/faq";
 ```
 
@@ -506,7 +537,7 @@ export const FAQ_ENDPOINT = "/api/v1/faq";
 
 In `core/api/pageResolver.ts`, add one case:
 
-```tsx
+```
 case "node":
   switch (routeData.bundle) {
     case "faq":
@@ -519,7 +550,7 @@ case "node":
 
 In `[...slug].tsx`:
 
-```tsx
+```
 case "faq":
   return <FaqView data={pageData} />;
 ```
@@ -557,7 +588,7 @@ All cart endpoints require `Commerce-Cart-Token` header (UUID v4, stored in cook
 
 ## Testing
 
-```bash
+```
 yarn test          # Watch mode — re-runs on file changes
 yarn test --run    # Run once (CI)
 ```
@@ -613,7 +644,7 @@ Uses Effector's `fork()` API to create isolated store scopes per test — no sta
 
 ## Getting Started
 
-```bash
+```
 # Create Next.js project (say NO to App Router, YES to src/ directory)
 yarn create next-app@latest my-app
 

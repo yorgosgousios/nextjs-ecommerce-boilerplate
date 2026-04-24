@@ -1,6 +1,6 @@
 import { useCheckoutViewModel } from "../viewmodel/useCheckoutViewModel";
 import { useForm } from "react-hook-form";
-import type { CheckoutFormData, CheckoutStep } from "../model/types";
+import type { CheckoutFormData } from "../model/types";
 import { formatPrice } from "@/core/lib/formatters";
 import styles from "./CheckoutSection.module.scss";
 

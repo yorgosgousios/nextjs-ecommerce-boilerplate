@@ -4,7 +4,6 @@ import { ProductFiltersPanel } from "./ProductFiltersPanel";
 import { Pagination } from "./Pagination";
 import type { TaxonomyResponse } from "../model/types";
 import styles from "./ProductListSection.module.scss";
-import { useEffect } from "react";
 
 interface ProductListSectionProps {
   initialData: TaxonomyResponse;
